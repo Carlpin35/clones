@@ -1,7 +1,7 @@
 import React from 'react'
 import Post from './Post';
 import { collection, query, onSnapshot, orderBy, docs } from '@firebase/firestore'
-import { db } from '/firebase'
+import { db } from '../firebase'
 import { useEffect, useState } from 'react';
 
 
@@ -24,6 +24,7 @@ useEffect(
 		<div>
 		{posts.map(post => (
 		    <Post key={post.id} 
+		    id={post.id}
 		    username={post.data().username} 
 		    userImg={post.data().profileImg} 
 		    img={post.data().image} 

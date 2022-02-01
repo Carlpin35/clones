@@ -10,8 +10,18 @@ import {
 import { HeartIcon as HeartIconFiled } from '@heroicons/react/solid';
 import { useSession } from 'next-auth/react';
 import { useState, useEffect } from 'react'
-import { db, storage} from '/firebase'
-import { addDoc, collection, doc, serverTimestamp, onSnapshot, orderBy, query } from '@firebase/firestore';
+import { db, storage} from '../firebase'
+import { addDoc, 
+    collection, 
+    doc, 
+    serverTimestamp, 
+    onSnapshot, 
+    setDoc, 
+    orderBy, 
+    query, 
+    deleteDoc, } from '@firebase/firestore';
+import  Moment from 'react-moment';
+import 'moment-timezone';
 
 
 
@@ -20,12 +30,14 @@ export default function Post({ id, username, userImg, img, caption }) {
 	const { data: session } = useSession();  
     const [comment, setComment] = useState("");
     const [comments, setComments] = useState([]);
+    const [likes, setLikes] = useState([]);
+    const [hasLiked, setHasLiked] = useState(false)
 
 
   
 
 
-   /* useEffect(
+    useEffect(
         () => 
         onSnapshot(
             query(
@@ -34,9 +46,41 @@ export default function Post({ id, username, userImg, img, caption }) {
                ), 
             (snapshot) => setComments(snapshot.docs)
             ), 
-        [db],
-        console.log(collection) 
-        );  */
+        [db, id],
+        ); 
+
+
+     useEffect(() => 
+        onSnapshot(collection(db, "posts", id, "likes"), (snapshot) => 
+            setLikes(snapshot.docs)
+        ),
+         [db, id],
+    );
+   
+
+   useEffect(() => 
+     setHasLiked(likes.findIndex((like) => like.id === session?.user?.uid ) !== -1
+        ), [likes])
+
+
+
+
+    const likePost = async () => {
+          
+          if (hasLiked) {
+            await deleteDoc(doc(db, 'posts', id, 'likes', session.user.uid))
+          } else {
+
+              await setDoc(doc(db, 'posts', id, "likes", session.user.uid), {
+            username: session.user.username,
+        });
+    
+          }
+      
+    };
+
+
+
 
     const sendComment = async (e) => {
               e.preventDefault();
@@ -53,6 +97,8 @@ export default function Post({ id, username, userImg, img, caption }) {
        
         });
     };
+
+ 
         
         
     
@@ -76,7 +122,13 @@ export default function Post({ id, username, userImg, img, caption }) {
         {session && (
             <div className="flex justify-between px-4 pt-4">
               <div className="flex space-x-4" >
-                 <HeartIcon className="btn" />  
+                   { hasLiked ? (
+                       <HeartIconFiled onClick={likePost} className="btn text-red-500" />
+                    ) : (
+                        <HeartIcon onClick={likePost} className="btn" /> 
+                    ) }
+
+                  
                  <ChatIcon className="btn" />
                  <PaperAirplaneIcon className="btn" />
               </div>
@@ -89,10 +141,27 @@ export default function Post({ id, username, userImg, img, caption }) {
         {/*caption*/}
 
         <p className="p-5 truncate" >
+                {likes.length > 0 && (
+                         <p className="font-bold  mb-1">{likes.length} Likes</p>
+                    )}
         	<span className="font-bold mr-1">{username} </span>{caption}
         </p>
 
         {/*comments*/}
+
+        {comments.length > 0 && (
+             <div className=" ml-10 h-20 overflow-y-scroll scrollbar-thumb-black scrollbar-thin">
+                 {comments.map(comment => (
+                        <div key={comment.id} className="flex items-center space-x-2 mb-3">
+                            <img className="h-7 rounded-full" src={comment.data().userImage} alt="" />
+                            <p className="text-sm flex-1" ><span className="font-bold">{comment.data().username}</span>{" "} {comment.data().comment}</p>
+                            <Moment fromNow className="pr-5 text-xs">
+                                {comment.data().timestamp?.toDate()}
+                            </Moment>
+                        </div>
+                    ))}
+             </div>
+            ) }
 
     {/*input box*/}
     {session && (
